@@ -77,7 +77,7 @@ sudo crontab -e
 Add the following:
 
 ```
-@reboot python /home/<user>/logsaver.py
+@reboot python3 /home/<user>/logsaver.py
 ```
 
 Please make sure that you have to replace `<user>` with the username of your current user!
