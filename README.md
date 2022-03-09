@@ -68,19 +68,37 @@ python3 logsaver.py
 
 Please make sure that you have configured the database access in the program accordingly!
 
-To run the program permanently after system startup, they need to edit the crontab:
+To run the program permanently after system startup, you have to create a systemd service:
 
 ```
-sudo crontab -e
+sudo nano /etc/systemd/system/ohlogsaver.service
 ```
 
 Add the following:
 
 ```
-@reboot /usr/bin/python3 /home/<user>/logsaver.py &
+[Unit]
+Description=openHAB LogSaver service
+After=multi-user.target mariadb.service
+
+[Service]
+Type=simple
+Restart=always
+ExecStart=/usr/bin/python3 /home/<user>/logsaver.py
+
+[Install]
+WantedBy=multi-user.target
 ```
 
 Please make sure that you have to replace `<user>` with the username of your current user!
+
+Then you have to start and enable it:
+
+```
+sudo systemctl daemon-reload
+sudo systemctl start ohlogsaver.service
+sudo systemctl enable ohlogsaver.service
+```
 
 ## Custom configuration
 
