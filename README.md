@@ -83,6 +83,8 @@ After=multi-user.target mariadb.service
 
 [Service]
 Type=simple
+User=<user>
+Group=<user>
 Restart=always
 ExecStart=/usr/bin/python3 /home/<user>/logsaver.py
 
