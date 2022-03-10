@@ -1,6 +1,20 @@
 # OpenHAB-LogSaver
 Save openhab logs into a MariaDB database. You can simply rewrite this code for other databases too. Please consider that it will only read and save the last line of a log file. If you restart openhab the log file should be empty. After each file change the last line will be reread with this program. With this each change should be transmitted into your databse table.
 
+The table looks like:
+
+```
++-------------+-------------+------+-----+---------+----------------+
+| Field       | Type        | Null | Key | Default | Extra          |
++-------------+-------------+------+-----+---------+----------------+
+| id          | int(11)     | NO   | PRI | NULL    | auto_increment |
+| datetime    | datetime    | YES  | MUL | NULL    |                |
+| log_level   | varchar(10) | YES  |     | NULL    |                |
+| log_event   | varchar(30) | YES  |     | NULL    |                |
+| log_message | longtext    | YES  |     | NULL    |                |
++-------------+-------------+------+-----+---------+----------------+
+```
+
 ## Install
 
 Please make sure that MariaDB is installed:
