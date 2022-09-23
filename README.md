@@ -116,6 +116,69 @@ sudo systemctl start ohlogsaver.service
 sudo systemctl enable ohlogsaver.service
 ```
 
+### Standard configuration:
+
+```
+if __name__ == "__main__":
+    threads = []
+
+    db_user = "<username>"
+    db_password = "<password>"
+    host = "<database_ip>"
+    port = <port>
+    database = "OpenHAB_LOGS"
+    location = "/var/log/openhab/"
+
+    events = OpenHABLogReader(db_user, db_password, host, port, database, "events", location, "events.log")
+    openhab = OpenHABLogReader(db_user, db_password, host, port, database, "openhab", location, "openhab.log")
+
+    threads.append(events)
+    threads.append(openhab)
+
+    for th in threads:
+        th.start()
+
+    for t in threads:
+        t.join()
+
+    events.disconnect()
+    openhab.disconnect()
+```
+
+### openHAB and HABApp configuration
+
+```
+if __name__ == "__main__":
+    threads = []
+
+    db_user = "<username>"
+    db_password = "<password>"
+    host = "<database_ip>"
+    port = <port>
+    database = "OpenHAB_LOGS"
+    location = "/var/log/openhab/"
+    habapp_location = "/etc/openhab/habapp/logs/"
+
+    events = OpenHABLogReader(db_user, db_password, host, port, database, "events", location, "events.log")
+    openhab = OpenHABLogReader(db_user, db_password, host, port, database, "openhab", location, "openhab.log")
+    HABApp_events = OpenHABLogReader(db_user, db_password, host, port, database, "HABApp_events", habapp_location, "HABApp_events.log")
+    HABApp = OpenHABLogReader(db_user, db_password, host, port, database, "HABApp", habapp_location, "HABApp.log")
+
+    threads.append(events)
+    threads.append(openhab)
+    threads.append(HABApp_events)
+    threads.append(HABApp)
+
+    for th in threads:
+        th.start()
+
+    for t in threads:
+        t.join()
+
+    events.disconnect()
+    openhab.disconnect()
+```
+
 ## Custom configuration
 
 ### Database connection
@@ -123,55 +186,71 @@ sudo systemctl enable ohlogsaver.service
 As already mentioned you have to configure your own database access:
 
 ```
-reader.connect("<username>", "<password>", "<database_ip>", 3306, "OpenHAB_LOGS")
+db_user = "<username>"
+db_password = "<password>"
+host = "<database_ip>"
+port = 3306
 ```
 
 As example the `<username>` could be `openhab` and the `<password>` could be `anonymous`. If you run the database on the same server than your database you can use `127.0.0.1` for `<database_ip>`. As you can see MariaDB runs under the port `3306`. If you use another port you should change that! In the example above we will create and use the database `OpenHAB_LOGS`. If you want to use another database you should rename it! Please be careful: The database will only created if it's not existing.
 
+The variables will be used later.
+
 ### Database table
 
-With following method
+In the constructor you have to use a name for your table. You can define a variable like this:
 
 ```
-reader.createTable("logs")
+table = "logs"
 ```
 
-the table `logs` will be created inside your configured database if it is not exsisting! If you want to use another table you should rename `logs`.
+The table `logs` will be created inside your configured database if it is not exsisting! If you want to use another table you should rename `logs`.
+
+Normally openHAB will use the two log files `events.log` and `openhab.log`. So you could use two Threads which will read each of this files and could also create/use two tables. Or if you use HABApp you there are maybe other log files you want to save in your database.
 
 ### Log Path
 
-The log path is hardcoded because the programm is mainly for openHAB 3. There the path `/var/log/openhab/` is used for saving the logs. If you use as example openHAB 2 you want to change the path to `/var/log/openhab2/`. Please make sure that you use a `/` at the end of the path! You can change the path by changing the string in the `self.location` variable in line 13!
+The log path for openHAB 2 and openHAB 3 differs. The path `/var/log/openhab/` is used by openHAB 3 for saving the logs. If you use as example openHAB 2 you want to change the path to `/var/log/openhab2/`. Please make sure that you use a `/` at the end of the path!
+
+```
+location = "/var/log/openhab"
+```
+
+or
+
+```
+location = "/var/log/openhab2"
+```
+
+This path may vary if you installed openHAB manually or via Docker. If you are using Docker, you must specify the path to the volume. And of course you can use another path if you are using HABApp.
 
 ### How to read a log file
 
 If you want to read a log file you have to run as example:
 
 ```
-reader.readAndSaveLogFile("events.log", "logs")
+events = OpenHABLogReader(db_user, db_password, host, port, database, "events", location, "events.log")
+openhab = OpenHABLogReader(db_user, db_password, host, port, database, "openhab", location, "openhab.log")
 ```
 
-This will read the `/var/log/openhab/events.log` and write its content into your configured database table.
+This are two Threads which could be started. As you can see, some parameters are used twice for the constructors, so the use of variables made sense. If e.g. HABApp is added now, you might want to enter the path for the log data there via another variable or directly in the constructor.
 
-Please consider that the program is only written for using one location where the log files could be found!
-
-If you want to read and save multiple log files you have to use threads like given in following example:
-
-```
-Thread(target = reader.readAndSaveLogFile("events.log", "logs")).start()
-Thread(target = reader.readAndSaveLogFile("openhab.log", "logs")).start()
-```
-
-This should be equivalent to `log:tail` inside the `karaf console` of openhab.
+This will read the `/var/log/openhab/events.log` and write its content into the database table `events`. And it will read `/var/log/openhab/openhab.log` and write its content into the database table `openhab`. Of course it is possible that you save it into the same database table.
 
 ### Add HABApp Logs
 
-If you want to add as example the HABApp logs to this program for also saving them into the database you have to make sure that the HABApp logs are saved in the same location as the openhab logs. Please edit the `config.yml` (as example in `/etc/openhab/habapp/`):
+If you want to add as example the HABApp logs to this program for also saving them into the database you have to make sure that the HABApp logs are saved in the same location as the openhab logs or use another object. Please edit the `config.yml` (as example in `/etc/openhab/habapp/`):
 
 ```
 ...
 directories:
   logging: /var/log/openhab  # Folder where the logs will be written to
 ...
+```
+
+```
+HABApp_events = OpenHABLogReader(db_user, db_password, host, port, database, "HABApp_events", "/etc/openhab/habapp/logs", "HABApp_events.log")
+HABApp = OpenHABLogReader(db_user, db_password, host, port, database, "HABApp", "/etc/openhab/habapp/logs", "HABApp.log")
 ```
 
 Then you have to make sure that HABApp uses the same formatting for saving the logs than openhab. Please edit the `logging.yml` (as example in `/etc/openhab/habapp/`):
@@ -218,11 +297,3 @@ loggers:
 
 ```
 
-After that you have to restart HABApp with `sudo systemctl restart habapp.service`
-
-Then you can add as example two threads for `HABApp.log` and `HABApp_events.log` like following:
-
-```
-Thread(target = reader.readAndSaveLogFile("HABApp.log", "log")).start()
-Thread(target = reader.readAndSaveLogFile("HABApp_events.log", "logs")).start()
-```
